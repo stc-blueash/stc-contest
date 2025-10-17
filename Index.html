@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pumpkin Voting Contest</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 2em auto;
+      padding: 1em;
+      background: #fff8dc;
+      color: #5a3e1b;
+    }
+    h1 {
+      text-align: center;
+    }
+    .pumpkin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1em;
+      padding: 0;
+      list-style: none;
+    }
+    .pumpkin-item {
+      background: #f4e1b6;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 2px 2px 5px rgba(90, 62, 27, 0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .pumpkin-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5em;
+      margin-bottom: 1em;
+    }
+    .pumpkin-info img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 2px solid #d2691e;
+      box-shadow: 1px 1px 3px rgba(90, 62, 27, 0.5);
+    }
+    button {
+      background-color: #d2691e;
+      color: white;
+      border: none;
+      padding: 0.5em 1em;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      width: 100%;
+      max-width: 140px;
+    }
+    button:disabled {
+      background-color: #a0522d;
+      cursor: not-allowed;
+    }
+    .votes {
+      font-weight: bold;
+      margin-top: 0.5em;
+    }
+    .message {
+      text-align: center;
+      margin-top: 1em;
+      font-style: italic;
+      color: #a0522d;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pumpkin Voting Contest</h1>
+  <ul class="pumpkin-grid" id="pumpkinList"></ul>
+  <div class="message" id="message"></div>
+
+  <script>
+    // Sample pumpkins with images
+    const pumpkins = [
+      { id: 1, name: "Spooky Jack", img: "https://i.imgur.com/3XJ2I9G.jpg" },
+      { id: 2, name: "Gourd-geous", img: "https://i.imgur.com/5z7P3gG.jpg" },
+      { id: 3, name: "Pumpkin Spice", img: "https://i.imgur.com/6hXQz0Q.jpg" },
+      { id: 4, name: "The Great Pumpkin", img: "https://i.imgur.com/1mGqZ2W.jpg" },
+    ];
+
+    // Load votes from localStorage or initialize
+    let votes = JSON.parse(localStorage.getItem('pumpkinVotes')) || {};
+    let hasVoted = localStorage.getItem('hasVoted') === 'true';
+
+    const pumpkinList = document.getElementById('pumpkinList');
+    const message = document.getElementById('message');
+
+    pumpkins.forEach(p => {
+      if (!(p.id in votes)) votes[p.id] = 0;
+    });
+
+    function renderPumpkins() {
+      pumpkinList.innerHTML = '';
+      pumpkins.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'pumpkin-item';
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'pumpkin-info';
+
+        const img = document.createElement('img');
+        img.src = p.img;
+        img.alt = p.name;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = p.name;
+
+        infoDiv.appendChild(img);
+        infoDiv.appendChild(nameSpan);
+
+        const voteCount = document.createElement('div');
+        voteCount.className = 'votes';
+        voteCount.textContent = `Votes: ${votes[p.id]}`;
+
+        const voteBtn = document.createElement('button');
+        voteBtn.textContent = 'Vote';
+        voteBtn.disabled = hasVoted;
+        voteBtn.addEventListener('click', () => {
+          votes[p.id]++;
+          localStorage.setItem('pumpkinVotes', JSON.stringify(votes));
+          localStorage.setItem('hasVoted', 'true');
+          hasVoted = true;
+          renderPumpkins();
+          message.textContent = `Thanks for voting for "${p.name}"!`;
+        });
+
+        li.appendChild(infoDiv);
+        li.appendChild(voteCount);
+        li.appendChild(voteBtn);
+
+        pumpkinList.appendChild(li);
+      });
+
+      if (hasVoted) {
+        message.textContent = 'You have already voted. Thanks for participating!';
+      }
+    }
+
+    renderPumpkins();
+  </script>
+</body>
+</html>
