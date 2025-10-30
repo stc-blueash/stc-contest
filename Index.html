@@ -22,7 +22,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
-  <h1 style="text-align:center;">Steelcraft Pumpkin Decoration Contest - 2025</h1>
+  <h1 style="text-align:center;">Steelcraft Pumkin Decoration Contest - 2025</h1>
   <!-- Message on top for mobile visibility -->
   <div class="message" id="message"></div>
   <ul id="pumpkinList" class="pumpkin-grid"></ul>
@@ -30,7 +30,7 @@
   <script>
     // ----- CONFIG: replace with your Firebase project's config -----
     const firebaseConfig = {
-       apiKey: "AIzaSyC4qjwxaFkGBPM7D-tqq2CYZoSv5K4l6fQ",
+      apiKey: "AIzaSyC4qjwxaFkGBPM7D-tqq2CYZoSv5K4l6fQ",
       authDomain: "stc-contest-api.firebaseapp.com",
       projectId: "stc-contest-api",
       storageBucket: "stc-contest-api.appspot.com",
@@ -39,6 +39,9 @@
     };
     // ---------------------------------------------------------------
 
+    // Constant: voting end message
+    const VOTING_END_MESSAGE = "Voting ends on Friday, 10/31/2025 10 PM EST";
+
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
@@ -46,10 +49,10 @@
 
     // Pumpkins array (include image file names in same directory as index.html)
     const pumpkins = [
-      { id: 1, name: "Pumpkin No 1", number: 1, image: "pumpkin1.jpg" },
-      { id: 2, name: "Pumpkin No 2", number: 2, image: "pumpkin2.jpg" },
-      { id: 3, name: "Pumpkin No 3", number: 3, image: "pumpkin3.jpg" },
-      { id: 4, name: "Pumpkin No 4", number: 4, image: "pumpkin4.jpg" }
+      { id: 1, name: "Pumpkin No 1", number: 1, image: "P1.jpg" },
+      { id: 2, name: "Pumpkin No 2", number: 2, image: "P2.jpg" },
+      { id: 3, name: "Pumpkin No 3", number: 3, image: "P3.jpg" },
+      { id: 4, name: "Pumpkin No 4", number: 4, image: "P4.jpg" }
     ];
 
     // LocalStorage keys
@@ -78,7 +81,11 @@
 
     // Firestore refs
     const pumpkinRef = id => db.collection('pumpkins').doc(String(id));
+    // single vote doc per user: votes/{userId}
     const userVoteDocRef = userId => db.collection('votes').doc(String(userId));
+
+    // Set initial top message so users see end date immediately
+    message.textContent = VOTING_END_MESSAGE;
 
     // Auth state
     let currentUser = null;
@@ -86,8 +93,8 @@
       if (user) {
         currentUser = user;
         await ensurePumpkinsExist();
-        renderPumpkins();
-        setupRealtimeCounts();
+        renderPumpkins(); // render once we have auth and ensured pumpkins
+        setupRealtimeCounts(); // keep internal cache if desired
       } else {
         auth.signInAnonymously().catch(err => {
           console.error('Anonymous sign-in failed:', err);
@@ -96,6 +103,7 @@
       }
     });
 
+    // Ensure pumpkin docs exist
     async function ensurePumpkinsExist() {
       const batch = db.batch();
       for (const p of pumpkins) {
@@ -125,10 +133,7 @@
         img.src = p.image;
         img.alt = p.name;
         img.className = 'pumpkin-thumb';
-        // In case image fails to load, fall back to name/number
-        img.onerror = () => {
-          img.style.display = 'none';
-        };
+        img.onerror = () => { img.style.display = 'none'; };
 
         // Number badge
         const numberDiv = document.createElement('div');
