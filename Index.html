@@ -8,11 +8,12 @@
     body { font-family: Arial, sans-serif; background:#fff8dc; color:#5a3e1b; max-width:900px; margin:1rem auto; padding:1rem; }
     .pumpkin-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:1rem; padding:0; list-style:none; }
     .pumpkin-item { background:#f4e1b6; padding:1rem; border-radius:8px; text-align:center; }
-    .pumpkin-number { width:120px;height:120px;border-radius:16px;background:#ffd27a;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:bold;color:#7a3f00;margin:0 auto .5rem; user-select: none; }
+    .pumpkin-thumb { width:120px; height:120px; object-fit:cover; border-radius:16px; display:block; margin:0 auto .4rem; }
+    .pumpkin-number { width:120px;height:120px;border-radius:16px;background:#ffd27a;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:bold;color:#7a3f00;margin:0 auto .4rem; }
     .pumpkin-name { font-weight:bold;margin-bottom:.5rem; }
     button { background:#d2691e;color:#fff;border:none;padding:.5em 1em;border-radius:6px;cursor:pointer;width:100%;max-width:180px;font-weight:bold; }
     button:disabled { background:#a0522d;cursor:not-allowed; }
-    .message { text-align:center;margin-top:1rem;color:#a0522d;font-style:italic; }
+    .message { text-align:center;margin-bottom:1rem;color:#a0522d;font-style:italic; min-height:1.5em; }
   </style>
 
   <!-- Firebase compat libraries -->
@@ -22,13 +23,14 @@
 </head>
 <body>
   <h1 style="text-align:center;">Steelcraft Pumpkin Decoration Contest - 2025</h1>
-  <ul id="pumpkinList" class="pumpkin-grid"></ul>
+  <!-- Message on top for mobile visibility -->
   <div class="message" id="message"></div>
+  <ul id="pumpkinList" class="pumpkin-grid"></ul>
 
   <script>
     // ----- CONFIG: replace with your Firebase project's config -----
     const firebaseConfig = {
-      apiKey: "AIzaSyC4qjwxaFkGBPM7D-tqq2CYZoSv5K4l6fQ",
+       apiKey: "AIzaSyC4qjwxaFkGBPM7D-tqq2CYZoSv5K4l6fQ",
       authDomain: "stc-contest-api.firebaseapp.com",
       projectId: "stc-contest-api",
       storageBucket: "stc-contest-api.appspot.com",
@@ -42,18 +44,17 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Pumpkins array (numbers shown instead of images)
+    // Pumpkins array (include image file names in same directory as index.html)
     const pumpkins = [
-      { id: 1, name: "Spooky Jack", number: 7 },
-      { id: 2, name: "Gourd-geous", number: 4 },
-      { id: 3, name: "Pumpkin Spice", number: 9 },
-      { id: 4, name: "The Great Pumpkin", number: 2 },
-      { id: 5, name: "Add Test", number: 10 }
+      { id: 1, name: "Pumpkin No 1", number: 1, image: "pumpkin1.jpg" },
+      { id: 2, name: "Pumpkin No 2", number: 2, image: "pumpkin2.jpg" },
+      { id: 3, name: "Pumpkin No 3", number: 3, image: "pumpkin3.jpg" },
+      { id: 4, name: "Pumpkin No 4", number: 4, image: "pumpkin4.jpg" }
     ];
 
     // LocalStorage keys
-    const LOCAL_VOTES_KEY = 'pumpkinVotesLocal'; // was used before; keep map for compatibility
-    const LOCAL_HAS_VOTED_KEY = 'pumpkinHasVoted'; // store votedPumpkinId or true
+    const LOCAL_VOTES_KEY = 'pumpkinVotesLocal';
+    const LOCAL_HAS_VOTED_KEY = 'pumpkinHasVoted';
 
     function loadLocalVotesMap() {
       try { return JSON.parse(localStorage.getItem(LOCAL_VOTES_KEY)) || {}; } catch (e) { return {}; }
@@ -66,7 +67,6 @@
     }
     function setHasVoted(pumpkinId) {
       try { localStorage.setItem(LOCAL_HAS_VOTED_KEY, String(pumpkinId)); } catch (e) {}
-      // keep per-pumpkin map too (legacy)
       const map = loadLocalVotesMap();
       map[pumpkinId] = true;
       saveLocalVotesMap(map);
@@ -78,7 +78,6 @@
 
     // Firestore refs
     const pumpkinRef = id => db.collection('pumpkins').doc(String(id));
-    // single vote doc per user: votes/{userId}
     const userVoteDocRef = userId => db.collection('votes').doc(String(userId));
 
     // Auth state
@@ -87,8 +86,8 @@
       if (user) {
         currentUser = user;
         await ensurePumpkinsExist();
-        renderPumpkins(); // render once we have auth and ensured pumpkins
-        setupRealtimeCounts(); // keep internal cache if desired
+        renderPumpkins();
+        setupRealtimeCounts();
       } else {
         auth.signInAnonymously().catch(err => {
           console.error('Anonymous sign-in failed:', err);
@@ -97,7 +96,6 @@
       }
     });
 
-    // Ensure pumpkin docs exist
     async function ensurePumpkinsExist() {
       const batch = db.batch();
       for (const p of pumpkins) {
@@ -110,10 +108,11 @@
       try { await batch.commit(); } catch(e){ /* ignore */ }
     }
 
-    // Render UI; disables all buttons if local hasVoted set
+    // Render UI; counts are hidden; show image + number
     async function renderPumpkins() {
       if (!currentUser) return;
       pumpkinList.innerHTML = '';
+
       const hasVotedLocal = !!loadHasVoted();
       const localMap = loadLocalVotesMap();
 
@@ -121,6 +120,17 @@
         const li = document.createElement('li');
         li.className = 'pumpkin-item';
 
+        // Image
+        const img = document.createElement('img');
+        img.src = p.image;
+        img.alt = p.name;
+        img.className = 'pumpkin-thumb';
+        // In case image fails to load, fall back to name/number
+        img.onerror = () => {
+          img.style.display = 'none';
+        };
+
+        // Number badge
         const numberDiv = document.createElement('div');
         numberDiv.className = 'pumpkin-number';
         numberDiv.textContent = p.number;
@@ -133,39 +143,31 @@
         voteBtn.textContent = 'Vote';
 
         if (hasVotedLocal) {
-          // device already voted => disable all buttons
           voteBtn.disabled = true;
         } else {
-          // check server-side whether this user has already voted (single doc)
-          try {
-            const voteDoc = await userVoteDocRef(currentUser.uid).get();
-            if (voteDoc.exists) {
-              // server says user already voted — mirror to local and disable
-              setHasVoted(voteDoc.data().pumpkinId || true);
+          userVoteDocRef(currentUser.uid).get().then(doc => {
+            if (doc.exists) {
               voteBtn.disabled = true;
+              setHasVoted(doc.data().pumpkinId || true);
             } else {
               voteBtn.disabled = false;
             }
-          } catch (err) {
+          }).catch(err => {
             console.error('Error checking user vote doc:', err);
-            // On error, keep button enabled (user can try), or you might prefer to disable
             voteBtn.disabled = false;
-          }
+          });
         }
 
         voteBtn.addEventListener('click', async () => {
-          // If local storage indicated vote already, be safe and prevent
           if (loadHasVoted()) {
             voteBtn.disabled = true;
             message.textContent = 'You have already voted.';
             return;
           }
 
-          // Optimistically disable all buttons on device for UX
+          // Optimistic UX: disable all
           disableAllVoteButtons(true);
-
           try {
-            // transaction: check user vote doc doesn't exist, increment chosen pumpkin count, create user vote doc
             await db.runTransaction(async (t) => {
               const pRef = pumpkinRef(p.id);
               const uRef = userVoteDocRef(currentUser.uid);
@@ -179,36 +181,26 @@
               t.set(uRef, { pumpkinId: p.id, votedAt: firebase.firestore.FieldValue.serverTimestamp(), userId: currentUser.uid });
             });
 
-            // mark local device as voted for UX
             setHasVoted(p.id);
             message.textContent = `Thanks for voting for "${p.name}"!`;
-            // disable all buttons in UI
             disableAllVoteButtons(true);
           } catch (err) {
             console.error('Vote transaction failed:', err);
-            // If server says already voted, mirror to local and disable
             if (err.message && err.message.toLowerCase().includes('already voted')) {
-              // read server doc to get which pumpkin if available
               try {
                 const uDoc = await userVoteDocRef(currentUser.uid).get();
-                if (uDoc.exists) {
-                  setHasVoted(uDoc.data().pumpkinId || true);
-                } else {
-                  setHasVoted(true);
-                }
-              } catch (e2) {
-                setHasVoted(true);
-              }
+                if (uDoc.exists) setHasVoted(uDoc.data().pumpkinId || true);
+              } catch (e2) { setHasVoted(true); }
               message.textContent = 'You have already voted.';
               disableAllVoteButtons(true);
             } else {
               message.textContent = 'Could not record vote. Please try again.';
-              // Allow user to try again locally
               disableAllVoteButtons(false);
             }
           }
         });
 
+        li.appendChild(img);
         li.appendChild(numberDiv);
         li.appendChild(nameDiv);
         li.appendChild(voteBtn);
@@ -216,24 +208,20 @@
       }
     }
 
-    // Disable/enable all vote buttons in the current DOM
     function disableAllVoteButtons(disabled) {
       const buttons = document.querySelectorAll('.pumpkin-item button');
       buttons.forEach(b => b.disabled = disabled);
     }
 
-    // Optional: realtime listener kept for internal cache/admin use only (not displayed)
     function setupRealtimeCounts() {
       const col = db.collection('pumpkins');
       col.onSnapshot(snapshot => {
-        // Intentionally not rendering counts in UI
-        // You could keep them in a cache for admin use if needed
+        // Counts are hidden; no UI update here
       }, err => {
         console.error('Realtime listener error:', err);
       });
     }
 
-    // Start: sign-in if needed
     (async () => {
       if (!auth.currentUser) {
         try { await auth.signInAnonymously(); } catch (e) { console.error('Sign-in error', e); message.textContent = 'Unable to sign in; voting disabled.'; }
