@@ -40,7 +40,7 @@
     // ---------------------------------------------------------------
 
     // Constant: voting end message
-    const VOTING_END_MESSAGE = "Voting ends on Friday, 10/31/2025 10 PM EST";
+    const VOTING_END_MESSAGE = "Voting has ended!!!";
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
@@ -144,6 +144,9 @@
         nameDiv.className = 'pumpkin-name';
         nameDiv.textContent = p.name;
 
+
+
+/*
         const voteBtn = document.createElement('button');
         voteBtn.textContent = 'Vote';
 
@@ -205,10 +208,11 @@
           }
         });
 
+*/
         li.appendChild(img);
         li.appendChild(numberDiv);
         li.appendChild(nameDiv);
-        li.appendChild(voteBtn);
+       // li.appendChild(voteBtn);
         pumpkinList.appendChild(li);
       }
     }
